@@ -1,136 +1,92 @@
 # Banking System
 
-`Banking System` bu Spring Boot asosida yozilgan bank backend loyihasi bo'lib, foydalanuvchi autentifikatsiyasi, hisoblar, kartalar, tranzaksiyalar va kredit jarayonlarini boshqarish uchun mo'ljallangan.
+`Banking System` - bu Spring Boot asosida yozilgan REST API loyihasi bo'lib, bankning asosiy jarayonlarini boshqaradi: autentifikatsiya, hisoblar, kartalar, tranzaksiyalar, kredit arizalari va kredit to'lovlari.
 
-Loyiha hozircha backend API ko'rinishida ishlaydi va Swagger UI orqali brauzerdan test qilish mumkin.
-
-## Tezkor boshlash
-
-Quyidagi buyruqlar bilan loyihani tez ishga tushirishingiz mumkin:
-
-### H2 (standart, tez test uchun)
-
-```powershell
-.\gradlew.bat bootRun
-```
-
-### PostgreSQL (`banking_system` bilan)
-
-```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=postgres"
-```
-
-Swagger UI:
-
-- `http://localhost:8080/docs`
+Loyiha to'liq backend formatda ishlaydi va Swagger UI orqali test qilish mumkin.
 
 ## Mundarija
 
 - [Asosiy imkoniyatlar](#asosiy-imkoniyatlar)
 - [Texnologiyalar](#texnologiyalar)
-- [Loyihaning tuzilmasi](#loyihaning-tuzilmasi)
+- [Arxitektura va paketlar](#arxitektura-va-paketlar)
+- [Talablar](#talablar)
 - [Ishga tushirish](#ishga-tushirish)
-- [Testlarni ishga tushirish](#testlarni-ishga-tushirish)
-- [Swagger orqali tekshirish](#swagger-orqali-tekshirish)
-- [API bo'limlari](#api-bolimlari)
-- [Xavfsizlik](#xavfsizlik)
+- [Swagger va hujjatlar](#swagger-va-hujjatlar)
+- [Autentifikatsiya va xavfsizlik](#autentifikatsiya-va-xavfsizlik)
+- [API endpointlar](#api-endpointlar)
+- [Transaction History filtrlari](#transaction-history-filtrlari)
+- [Cron (scheduler) jarayonlari](#cron-scheduler-jarayonlari)
+- [Domain modellar va enumlar](#domain-modellar-va-enumlar)
+- [Testlar](#testlar)
 
 ## Asosiy imkoniyatlar
 
-- JWT asosidagi autentifikatsiya va token yangilash
-- Foydalanuvchi uchun hisob ochish va hisoblarni boshqarish
-- Kartalar yaratish, bloklash va qayta faollashtirish
-- Hisoblar va kartalar o'rtasida tranzaksiyalar
-- Kredit kalkulyatsiyasi
-- Kredit arizasi yuborish, tasdiqlash va rad etish
-- Kredit to'lov jadvali va kredit to'lovlarini amalga oshirish
-- Swagger UI orqali API hujjatlari
+- JWT (`access` + `refresh`) asosida login tizimi
+- Foydalanuvchilar uchun bank hisoblarini yaratish va boshqarish
+- Kartalar chiqarish, bloklash, blokdan chiqarish
+- Karta va hisoblar o'rtasida to'lov/o'tkazmalar
+- Tranzaksiya tarixini filterlash (sana, summa, tur)
+- Kredit kalkulyatsiyasi, kredit arizasi, tasdiqlash/rad etish
+- Kredit to'lov grafigi va to'lovlarni qabul qilish
+- Overdue kreditlar va muddati o'tgan kartalarni avtomatik qayta ishlash
 
 ## Texnologiyalar
 
 - Java 17
-- Spring Boot 4
+- Spring Boot 4.0.5
 - Spring Web MVC
-- Spring Data JPA
-- Spring Security
-- JWT (`jjwt`)
-- OpenAPI / Swagger UI
-- H2 Database
-- PostgreSQL
-- Gradle Kotlin DSL
+- Spring Data JPA (Hibernate)
+- Spring Security + Method Security
+- Bean Validation (`jakarta.validation`)
+- JWT (`io.jsonwebtoken`)
+- OpenAPI/Swagger (`springdoc-openapi`)
+- H2 (in-memory) va PostgreSQL
 - Lombok
+- Gradle (Kotlin DSL)
 
-## Loyihaning tuzilmasi
+## Arxitektura va paketlar
 
-Asosiy paket:
+Asosiy paket: `com.bankingsystem`
 
-`com.bankingsystem`
-
-Modullar:
-
-- `config` - umumiy bean va Swagger konfiguratsiyasi
+- `config` - umumiy beanlar, autentifikatsiya provider, Swagger/OpenAPI konfiguratsiyasi
 - `controller` - REST endpointlar
-- `dto` - request/response modellar
-- `entity` - JPA entity va enumlar
-- `exception` - xatolar va global handler
-- `repository` - ma'lumotlar bazasi repository'lari
-- `security` - JWT va Spring Security sozlamalari
-- `service` - biznes logika
+- `service` - biznes mantiq va jarayonlar
+- `repository` - JPA repository qatlami
+- `entity` - ma'lumotlar modeli va enumlar
+- `dto` - request/response obyektlari
+- `security` - JWT filtr va HTTP xavfsizlik qoidalari
+- `exception` - maxsus xatolar va global exception handler
 
-Asosiy ishga tushirish klassi:
-
-- `com.bankingsystem.BankingSystemApplication`
+Ishga tushirish klassi: `com.bankingsystem.BankingSystemApplication`
 
 ## Talablar
 
 - JDK 17
-- IntelliJ IDEA yoki boshqa Java IDE
-- Internetga ulangan muhit (birinchi marta dependency yuklash uchun)
+- Gradle wrapper (`gradlew`, `gradlew.bat`) mavjud
+- (Ixtiyoriy) PostgreSQL 15+ agar `postgres` profil ishlatilsa
 
 ## Ishga tushirish
 
-### 1. Standart rejim: H2 bilan
-
-Loyiha standart holatda ichki `H2` ma'lumotlar bazasi bilan ishga tushadi. Bu eng oddiy test rejimi.
+### 1) Standart rejim (H2, tez test uchun)
 
 ```powershell
 .\gradlew.bat bootRun
 ```
 
-Yoki IntelliJ ichida:
-
-1. `BankingSystemApplication` faylini oching
-2. `main` yonidagi Run tugmasini bosing
-
-Standart manzil:
-
-- API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/docs`
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
-
-Muhim:
-
-- H2 `in-memory` ishlaydi
-- ilova to'xtatilsa, ma'lumotlar o'chadi
-
-### 2. PostgreSQL bilan ishga tushirish
-
-PostgreSQL uchun alohida profil mavjud:
-
-- `src/main/resources/application-postgres.yaml`
-
-Ishga tushirish:
+### 2) PostgreSQL profili bilan
 
 ```powershell
 .\gradlew.bat bootRun --args="--spring.profiles.active=postgres"
 ```
 
-Agar IntelliJ ishlatsangiz:
+Standart URL'lar:
 
-1. `Run -> Edit Configurations`
-2. `Active profiles` maydoniga `postgres` yozing
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/docs`
+- OpenAPI: `http://localhost:8080/v3/api-docs`
+- H2 Console: `http://localhost:8080/h2-console`
 
-Standart PostgreSQL sozlamalari:
+`postgres` profil uchun standart sozlamalar (`application-postgres.yaml`):
 
 - host: `localhost`
 - port: `5432`
@@ -138,233 +94,170 @@ Standart PostgreSQL sozlamalari:
 - username: `postgres`
 - password: `123`
 
-Agar sizda boshqa ma'lumotlar bo'lsa, `application-postgres.yaml` ichida mos ravishda o'zgartiring.
+## Swagger va hujjatlar
 
-## Testlarni ishga tushirish
+Swagger UI orqali barcha endpointlarni tekshirish mumkin:
+
+- `http://localhost:8080/docs`
+
+OpenAPI konfiguratsiyasida `Bearer JWT` xavfsizlik sxemasi sozlangan.
+
+## Autentifikatsiya va xavfsizlik
+
+### Ochiq endpointlar
+
+- `/api/auth/**`
+- `/docs`, `/docs/**`, `/swagger-ui/**`, `/v3/api-docs/**`
+- `/h2-console/**`
+
+Qolgan barcha endpointlar autentifikatsiya talab qiladi.
+
+### JWT sozlamalari
+
+- `access-expiration`: `120000 ms` (2 daqiqa)
+- `refresh-expiration`: `604800000 ms` (7 kun)
+
+### Rollar
+
+- `USER`
+- `ADMIN`
+
+`@PreAuthorize("hasRole('ADMIN')")` bilan himoyalangan admin endpointlar mavjud (hisob/karta boshqaruvi, pending kredit arizalari, approve/reject).
+
+### CORS
+
+Ruxsat etilgan origin:
+
+- `http://localhost:3000`
+
+## API endpointlar
+
+### Auth (`/api/auth`)
+
+- `POST /register`
+- `POST /login`
+- `POST /refresh`
+
+### Account (`/api/accounts`)
+
+- `POST /user/{userId}` - admin
+- `GET /user/{userId}`
+- `GET /{accountId}`
+- `PUT /{accountId}` - admin
+- `PATCH /{accountId}/freeze` - admin
+- `PATCH /{accountId}/unfreeze` - admin
+- `DELETE /{accountId}` - admin
+
+### Card (`/api/cards`)
+
+- `POST /account/{accountId}` - admin
+- `GET /account/{accountId}`
+- `GET /{cardId}`
+- `PATCH /{cardId}/block` - admin
+- `PATCH /{cardId}/unblock` - admin
+
+### Transaction (`/api/transactions`)
+
+- `POST /card-transfer`
+- `POST /deposit`
+- `POST /withdraw`
+- `POST /payment`
+- `GET /history/{accountId}`
+
+### Loan Application (`/api/loan-applications`)
+
+- `POST /`
+- `GET /user/{userId}`
+- `GET /pending` - admin
+- `POST /{id}/approve` - admin
+- `POST /{id}/reject` - admin
+
+### Loan (`/api/loans`)
+
+- `POST /calculate`
+- `GET /user/{userId}`
+- `GET /{loanId}`
+- `GET /{loanId}/schedule`
+- `POST /{loanId}/pay`
+
+## Transaction History filtrlari
+
+`GET /api/transactions/history/{accountId}` endpointi quyidagi ixtiyoriy query parametrlari bilan ishlaydi:
+
+- `fromDate` (`yyyy-MM-dd`)
+- `toDate` (`yyyy-MM-dd`)
+- `minAmount`
+- `maxAmount`
+- `type` (`TRANSFER`, `PAYMENT`, `DEPOSIT`, `WITHDRAWAL`)
+
+Misol:
+
+`GET /api/transactions/history/1?fromDate=2026-04-01&toDate=2026-04-30&minAmount=10000&maxAmount=500000&type=PAYMENT`
+
+Validatsiya qoidalari:
+
+- `fromDate <= toDate`
+- `minAmount >= 0`
+- `maxAmount >= 0`
+- `minAmount <= maxAmount`
+
+## Cron (scheduler) jarayonlari
+
+Loyihada `@EnableScheduling` yoqilgan va quyidagi avtomatik jarayonlar mavjud:
+
+- `CardExpiryScheduler` - har kuni soat `00:00` da muddati o'tgan kartalarni `EXPIRED` qiladi
+- `LoanOverdueScheduler` - har kuni soat `01:00` da overdue kredit to'lovlariga penya hisoblaydi va statuslarni yangilaydi
+
+## Domain modellar va enumlar
+
+### Asosiy entity'lar
+
+- `User`
+- `Account`
+- `Card`
+- `Transaction`
+- `LoanApplication`
+- `Loan`
+- `LoanPayment`
+- `Company`
+- `Partner`
+
+### Enum qiymatlari
+
+- `Role`: `USER`, `ADMIN`
+- `UserStatus`: `ACTIVE`, `BLOCKED`, `INACTIVE`
+- `UserType`: `INDIVIDUAL`, `BUSINESS`
+- `OwnerType`: `USER`, `COMPANY`, `SYSTEM`
+- `PartnerType`: `PAYMENT_SYSTEM`, `BANK`, `FINTECH`, `GOVERNMENT`
+- `AccountStatus`: `ACTIVE`, `FROZEN`, `CLOSED`
+- `CardStatus`: `ACTIVE`, `BLOCKED`, `EXPIRED`
+- `CardType`: `UZCARD`, `HUMO`, `VISA`, `MASTERCARD`
+- `TransactionType`: `TRANSFER`, `PAYMENT`, `DEPOSIT`, `WITHDRAWAL`
+- `TransactionStatus`: `PENDING`, `COMPLETED`, `FAILED`, `CANCELLED`
+- `LoanType`: `CONSUMER`, `MICRO`, `MORTGAGE`, `AUTO`, `BUSINESS`
+- `LoanApplicationStatus`: `PENDING`, `APPROVED`, `REJECTED`
+- `LoanStatus`: `ACTIVE`, `CLOSED`, `OVERDUE`, `REJECTED`
+- `LoanPaymentStatus`: `SCHEDULED`, `PAID`, `OVERDUE`, `PARTIAL`
+
+## Testlar
+
+Testlarni ishga tushirish:
 
 ```powershell
 .\gradlew.bat clean test
 ```
 
-## Swagger orqali tekshirish
+Mavjud test sinflari:
 
-Swagger UI manzili:
+- `BankingSystemApplicationTests` (context load testi)
+- `ServiceSecurityAndValidationTests` (servis darajasidagi security/validation holatlari)
 
-- `http://localhost:8080/docs`
+## Tezkor foydalanish bo'yicha eslatma
 
-Swagger orqali:
-
-- endpointlarni ko'rish
-- request body yuborish
-- JWT token bilan avtorizatsiya qilish
-- javoblarni brauzerda tekshirish mumkin
-
-JWT kerak bo'ladigan endpointlar uchun avval:
+Swagger orqali test ketma-ketligi:
 
 1. `POST /api/auth/register`
 2. `POST /api/auth/login`
 3. `accessToken` ni oling
-4. Swagger'dagi `Authorize` tugmasi orqali quyidagini kiriting:
-
-```text
-Bearer <access_token>
-```
-
-## API bo'limlari
-
-### Auth
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-
-### Account
-
-- `POST /api/accounts/user/{userId}`
-- `GET /api/accounts/user/{userId}`
-- `GET /api/accounts/{accountId}`
-- `PUT /api/accounts/{accountId}`
-- `PATCH /api/accounts/{accountId}/freeze`
-- `PATCH /api/accounts/{accountId}/unfreeze`
-- `DELETE /api/accounts/{accountId}`
-
-### Card
-
-- `POST /api/cards/account/{accountId}`
-- `GET /api/cards/account/{accountId}`
-- `GET /api/cards/{cardId}`
-- `PATCH /api/cards/{cardId}/block`
-- `PATCH /api/cards/{cardId}/unblock`
-
-### Transaction
-
-- `POST /api/transactions/card-transfer`
-- `POST /api/transactions/deposit`
-- `POST /api/transactions/withdraw`
-- `POST /api/transactions/payment`
-- `GET /api/transactions/history/{accountId}`
-
-### Loan Application
-
-- `POST /api/loan-applications`
-- `GET /api/loan-applications/user/{userId}`
-- `GET /api/loan-applications/pending`
-- `POST /api/loan-applications/{id}/approve`
-- `POST /api/loan-applications/{id}/reject`
-
-### Loan
-
-- `POST /api/loans/calculate`
-- `GET /api/loans/user/{userId}`
-- `GET /api/loans/{loanId}`
-- `GET /api/loans/{loanId}/schedule`
-- `POST /api/loans/{loanId}/pay`
-
-## Namuna request'lar
-
-### Ro'yxatdan o'tish
-
-```json
-{
-  "fullName": "Ali Valiyev",
-  "phone": "+998901234567",
-  "password": "123456",
-  "passport": "AA1234567",
-  "pinfl": "12345678901234"
-}
-```
-
-### Login
-
-```json
-{
-  "phone": "+998901234567",
-  "password": "123456"
-}
-```
-
-### Hisob ochish
-
-```json
-{
-  "currency": "UZS"
-}
-```
-
-### Karta ochish
-
-```json
-{
-  "type": "UZCARD"
-}
-```
-
-### Karta orqali o'tkazma
-
-```json
-{
-  "fromCardNumber": "8600123412341234",
-  "toCardNumber": "9860123412341234",
-  "amount": 50000
-}
-```
-
-### Hisoblar o'rtasida to'lov
-
-```json
-{
-  "fromAccountId": 1,
-  "toAccountId": 2,
-  "amount": 150000
-}
-```
-
-### Kredit hisoblash
-
-```json
-{
-  "amount": 10000000,
-  "durationMonth": 24,
-  "loanType": "CONSUMER"
-}
-```
-
-### Kredit arizasi yuborish
-
-```json
-{
-  "userId": 1,
-  "accountId": 1,
-  "amount": 20000000,
-  "durationMonth": 36,
-  "loanType": "AUTO",
-  "monthlyIncome": 8000000
-}
-```
-
-## Enum qiymatlar
-
-### CardType
-
-- `UZCARD`
-- `HUMO`
-- `VISA`
-- `MASTERCARD`
-
-### LoanType
-
-- `CONSUMER`
-- `MICRO`
-- `MORTGAGE`
-- `AUTO`
-- `BUSINESS`
-
-### AccountStatus
-
-- `ACTIVE`
-- `FROZEN`
-- `CLOSED`
-
-### LoanStatus
-
-- `ACTIVE`
-- `CLOSED`
-- `OVERDUE`
-- `REJECTED`
-
-## Xavfsizlik
-
-- `/api/auth/**` ochiq
-- `/docs`, `/swagger-ui/**`, `/v3/api-docs/**` ochiq
-- qolgan endpointlar JWT talab qiladi
-
-JWT sozlamalari:
-
-- access token muddati: `120000 ms` (`2 daqiqa`)
-- refresh token muddati: `604800000 ms` (`7 kun`)
-
-## Rollar haqida
-
-Loyihada 2 ta asosiy rol mavjud:
-
-- `USER`
-- `ADMIN`
-
-Ro'yxatdan o'tgan foydalanuvchi standart holatda `USER` bo'lib yaratiladi.
-
-Agar siz administratorga mo'ljallangan endpointlarni sinamoqchi bo'lsangiz, foydalanuvchi rolini ma'lumotlar bazasida `ADMIN` ga o'zgartirishingiz mumkin.
-
-PostgreSQL uchun misol:
-
-```sql
-update _users
-set role = 'ADMIN'
-where phone = '+998901234567';
-```
-
-## Foydali eslatmalar
-
-- Frontend uchun CORS hozircha `http://localhost:3000` ga ruxsat beradi
-- Swagger UI test qilish uchun eng qulay usul
-- Standart H2 rejimi tez test uchun qulay
-- Doimiy ma'lumotlar bilan ishlash uchun `postgres` profildan foydalaning
+4. Swagger'da `Authorize` ga `Bearer <access_token>` kiriting
+5. Himoyalangan endpointlarni test qiling

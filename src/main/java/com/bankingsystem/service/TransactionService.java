@@ -23,6 +23,7 @@ import com.bankingsystem.repository.TransactionRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -159,14 +160,25 @@ public class TransactionService {
         return toResponse(transaction);
     }
 
-    public List<TransactionResponse> getAccountHistory(Long accountId) {
+    public List<TransactionResponse> getAccountHistory(
+            Long accountId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            BigDecimal minAmount,
+            BigDecimal maxAmount,
+            TransactionType type
+    ) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new NotFoundException("Hisob topilmadi"));
 
         accessControlService.requireAccountAccess(account);
+        validateHistoryFilters(fromDate, toDate, minAmount, maxAmount);
+
+        LocalDateTime fromDateTime = fromDate != null ? fromDate.atStartOfDay() : null;
+        LocalDateTime toDateTimeExclusive = toDate != null ? toDate.plusDays(1).atStartOfDay() : null;
 
         return transactionRepository
-                .findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(accountId, accountId)
+                .findAccountHistoryWithFilters(accountId, fromDateTime, toDateTimeExclusive, minAmount, maxAmount, type)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -197,6 +209,24 @@ public class TransactionService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Summa 0 dan katta bo'lishi kerak");
+        }
+    }
+
+    private void validateHistoryFilters(LocalDate fromDate, LocalDate toDate, BigDecimal minAmount, BigDecimal maxAmount) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BadRequestException("Boshlanish sanasi tugash sanasidan keyin bo'lishi mumkin emas");
+        }
+
+        if (minAmount != null && minAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Minimal summa manfiy bo'lishi mumkin emas");
+        }
+
+        if (maxAmount != null && maxAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Maksimal summa manfiy bo'lishi mumkin emas");
+        }
+
+        if (minAmount != null && maxAmount != null && minAmount.compareTo(maxAmount) > 0) {
+            throw new BadRequestException("Minimal summa maksimal summadan katta bo'lishi mumkin emas");
         }
     }
 

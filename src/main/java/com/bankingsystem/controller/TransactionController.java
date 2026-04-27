@@ -4,14 +4,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import com.bankingsystem.dto.CardTransferRequest;
 import com.bankingsystem.dto.DepositRequest;
 import com.bankingsystem.dto.PaymentRequest;
 import com.bankingsystem.dto.TransactionResponse;
 import com.bankingsystem.dto.WithdrawRequest;
+import com.bankingsystem.entity.TransactionType;
 import com.bankingsystem.service.TransactionService;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -43,8 +47,15 @@ public class TransactionController {
     }
 
     @GetMapping("/history/{accountId}")
-    public ResponseEntity<List<TransactionResponse>> history(@PathVariable Long accountId) {
-        return ResponseEntity.ok(transactionService.getAccountHistory(accountId));
+    public ResponseEntity<List<TransactionResponse>> history(
+            @PathVariable Long accountId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
+            @RequestParam(required = false) TransactionType type
+    ) {
+        return ResponseEntity.ok(transactionService.getAccountHistory(accountId, fromDate, toDate, minAmount, maxAmount, type));
     }
 }
 
