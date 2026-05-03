@@ -18,6 +18,7 @@ public class Company {
 
     private String name;
 
+    @Column(unique = true)
     private String inn;
 
     private String director;

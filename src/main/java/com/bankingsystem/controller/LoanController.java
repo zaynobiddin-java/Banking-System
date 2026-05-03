@@ -32,6 +32,11 @@ public class LoanController {
         return ResponseEntity.ok(loanService.getByUser(userId));
     }
 
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<List<LoanResponse>> getByCompany(@PathVariable Long companyId) {
+        return ResponseEntity.ok(loanService.getByCompany(companyId));
+    }
+
     @GetMapping("/{loanId}")
     public ResponseEntity<LoanResponse> getById(@PathVariable Long loanId) {
         return ResponseEntity.ok(loanService.getById(loanId));

@@ -8,6 +8,7 @@ import com.bankingsystem.dto.LoanApplicationRequest;
 import com.bankingsystem.dto.LoanApplicationResponse;
 import com.bankingsystem.entity.Account;
 import com.bankingsystem.entity.AccountStatus;
+import com.bankingsystem.entity.Company;
 import com.bankingsystem.entity.LoanApplication;
 import com.bankingsystem.entity.LoanApplicationStatus;
 import com.bankingsystem.entity.OwnerType;
@@ -15,6 +16,7 @@ import com.bankingsystem.entity.User;
 import com.bankingsystem.exception.BadRequestException;
 import com.bankingsystem.exception.NotFoundException;
 import com.bankingsystem.repository.AccountRepository;
+import com.bankingsystem.repository.CompanyRepository;
 import com.bankingsystem.repository.LoanApplicationRepository;
 import com.bankingsystem.repository.UserRepository;
 
@@ -31,6 +33,7 @@ public class LoanApplicationService {
     private final LoanApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final CompanyRepository companyRepository;
     private final LoanCalculator loanCalculator;
     private final LoanDisbursementService loanDisbursementService;
     private final AccessControlService accessControlService;
@@ -50,7 +53,21 @@ public class LoanApplicationService {
             throw new BadRequestException("Hisob aktiv emas");
         }
 
-        if (!account.getOwnerId().equals(user.getId()) || account.getOwnerType() != OwnerType.USER) {
+        Company company = null;
+        if (request.getCompanyId() != null) {
+            company = companyRepository.findById(request.getCompanyId())
+                    .orElseThrow(() -> new NotFoundException("Kompaniya topilmadi"));
+
+            accessControlService.requireCompanyAccess(company.getId());
+
+            if (user.getCompany() == null || !user.getCompany().getId().equals(company.getId())) {
+                throw new BadRequestException("Foydalanuvchi kompaniyaga biriktirilmagan");
+            }
+
+            if (!account.getOwnerId().equals(company.getId()) || account.getOwnerType() != OwnerType.COMPANY) {
+                throw new BadRequestException("Hisob kompaniyaga tegishli emas");
+            }
+        } else if (!account.getOwnerId().equals(user.getId()) || account.getOwnerType() != OwnerType.USER) {
             throw new BadRequestException("Hisob foydalanuvchiga tegishli emas");
         }
 
@@ -65,6 +82,7 @@ public class LoanApplicationService {
 
         LoanApplication application = LoanApplication.builder()
                 .user(user)
+                .company(company)
                 .disbursementAccount(account)
                 .amount(request.getAmount())
                 .durationMonth(request.getDurationMonth())
@@ -127,6 +145,17 @@ public class LoanApplicationService {
                 .stream().map(this::toResponse).toList();
     }
 
+    public List<LoanApplicationResponse> getByCompany(Long companyId) {
+        accessControlService.requireCompanyAccess(companyId);
+
+        if (!companyRepository.existsById(companyId)) {
+            throw new NotFoundException("Kompaniya topilmadi");
+        }
+
+        return applicationRepository.findByCompanyIdOrderByCreatedAtDesc(companyId)
+                .stream().map(this::toResponse).toList();
+    }
+
     public List<LoanApplicationResponse> getPending() {
         accessControlService.requireAdmin();
         return applicationRepository.findByStatusOrderByCreatedAtDesc(LoanApplicationStatus.PENDING)
@@ -152,6 +181,7 @@ public class LoanApplicationService {
         return LoanApplicationResponse.builder()
                 .id(a.getId())
                 .userId(a.getUser().getId())
+                .companyId(a.getCompany() != null ? a.getCompany().getId() : null)
                 .accountId(a.getDisbursementAccount() != null ? a.getDisbursementAccount().getId() : null)
                 .amount(a.getAmount())
                 .durationMonth(a.getDurationMonth())

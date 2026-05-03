@@ -29,9 +29,22 @@ public class AccountController {
         return ResponseEntity.ok(accountService.createAccount(userId, request));
     }
 
+    @PostMapping("/company/{companyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AccountResponse> createCompanyAccount(
+            @PathVariable Long companyId,
+            @Valid @RequestBody AccountCreateRequest request) {
+        return ResponseEntity.ok(accountService.createCompanyAccount(companyId, request));
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<AccountResponse>> getAccountsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(accountService.getAccountsByUserId(userId));
+    }
+
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<List<AccountResponse>> getAccountsByCompanyId(@PathVariable Long companyId) {
+        return ResponseEntity.ok(accountService.getAccountsByCompanyId(companyId));
     }
 
     @GetMapping("/{accountId}")

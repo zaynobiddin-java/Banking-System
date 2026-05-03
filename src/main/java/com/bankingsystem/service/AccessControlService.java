@@ -39,15 +39,34 @@ public class AccessControlService {
         }
     }
 
+    public void requireCompanyAccess(Long companyId) {
+        User currentUser = getCurrentUser();
+        if (currentUser.getRole() == Role.ADMIN) {
+            return;
+        }
+
+        if (currentUser.getCompany() == null || !currentUser.getCompany().getId().equals(companyId)) {
+            throw new ForbiddenException("Kompaniyaga kirish ruxsati yo'q");
+        }
+    }
+
     public void requireAccountAccess(Account account) {
         User currentUser = getCurrentUser();
         if (currentUser.getRole() == Role.ADMIN) {
             return;
         }
 
-        if (account.getOwnerType() != OwnerType.USER || !currentUser.getId().equals(account.getOwnerId())) {
-            throw new ForbiddenException("Hisobga kirish ruxsati yo'q");
+        if (account.getOwnerType() == OwnerType.USER && currentUser.getId().equals(account.getOwnerId())) {
+            return;
         }
+
+        if (account.getOwnerType() == OwnerType.COMPANY
+                && currentUser.getCompany() != null
+                && currentUser.getCompany().getId().equals(account.getOwnerId())) {
+            return;
+        }
+
+        throw new ForbiddenException("Hisobga kirish ruxsati yo'q");
     }
 
     public void requireCardAccess(Card card) {
@@ -60,9 +79,17 @@ public class AccessControlService {
             return;
         }
 
-        if (loan.getUser() == null || !currentUser.getId().equals(loan.getUser().getId())) {
-            throw new ForbiddenException("Kreditga kirish ruxsati yo'q");
+        if (loan.getCompany() != null
+                && currentUser.getCompany() != null
+                && currentUser.getCompany().getId().equals(loan.getCompany().getId())) {
+            return;
         }
+
+        if (loan.getUser() != null && currentUser.getId().equals(loan.getUser().getId())) {
+            return;
+        }
+
+        throw new ForbiddenException("Kreditga kirish ruxsati yo'q");
     }
 
     public User getCurrentUser() {

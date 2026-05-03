@@ -20,6 +20,7 @@ import com.bankingsystem.entity.TransactionType;
 import com.bankingsystem.exception.BadRequestException;
 import com.bankingsystem.exception.NotFoundException;
 import com.bankingsystem.repository.AccountRepository;
+import com.bankingsystem.repository.CompanyRepository;
 import com.bankingsystem.repository.LoanPaymentRepository;
 import com.bankingsystem.repository.LoanRepository;
 import com.bankingsystem.repository.TransactionRepository;
@@ -37,6 +38,7 @@ public class LoanService {
     private final LoanRepository loanRepository;
     private final LoanPaymentRepository loanPaymentRepository;
     private final AccountRepository accountRepository;
+    private final CompanyRepository companyRepository;
     private final TransactionRepository transactionRepository;
     private final LoanCalculator loanCalculator;
     private final AccessControlService accessControlService;
@@ -71,6 +73,17 @@ public class LoanService {
     public List<LoanResponse> getByUser(Long userId) {
         accessControlService.requireUserAccess(userId);
         return loanRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream().map(this::toLoanResponse).toList();
+    }
+
+    public List<LoanResponse> getByCompany(Long companyId) {
+        accessControlService.requireCompanyAccess(companyId);
+
+        if (!companyRepository.existsById(companyId)) {
+            throw new NotFoundException("Kompaniya topilmadi");
+        }
+
+        return loanRepository.findByCompanyIdOrderByCreatedAtDesc(companyId)
                 .stream().map(this::toLoanResponse).toList();
     }
 
@@ -172,7 +185,8 @@ public class LoanService {
     private LoanResponse toLoanResponse(Loan l) {
         return LoanResponse.builder()
                 .id(l.getId())
-                .userId(l.getUser().getId())
+                .userId(l.getUser() != null ? l.getUser().getId() : null)
+                .companyId(l.getCompany() != null ? l.getCompany().getId() : null)
                 .accountId(l.getAccount() != null ? l.getAccount().getId() : null)
                 .loanType(l.getLoanType() != null ? l.getLoanType().name() : null)
                 .amount(l.getAmount())

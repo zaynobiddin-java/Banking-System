@@ -26,6 +26,10 @@ public class Loan {
     private User user;
 
     @ManyToOne
+    @JoinColumn(name = "company_id")
+    private Company company;
+
+    @ManyToOne
     @JoinColumn(name = "account_id")
     private Account account;
 

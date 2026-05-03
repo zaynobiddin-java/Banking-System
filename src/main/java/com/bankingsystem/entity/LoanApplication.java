@@ -23,6 +23,10 @@ public class LoanApplication {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "company_id")
+    private Company company;
+
     private BigDecimal amount;
 
     @Column(name = "duration_month")

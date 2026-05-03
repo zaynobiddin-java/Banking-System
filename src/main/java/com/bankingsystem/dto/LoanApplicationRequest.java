@@ -15,6 +15,8 @@ public class LoanApplicationRequest {
     @NotNull(message = "Foydalanuvchi ID ko'rsatilishi shart")
     private Long userId;
 
+    private Long companyId;
+
     @NotNull(message = "Hisob ID ko'rsatilishi shart")
     private Long accountId;
 

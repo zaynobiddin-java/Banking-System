@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.bankingsystem.dto.AuthResponse;
+import com.bankingsystem.dto.BusinessRegisterRequest;
 import com.bankingsystem.dto.LoginRequest;
 import com.bankingsystem.dto.RefreshRequest;
 import com.bankingsystem.dto.RegisterRequest;
@@ -25,6 +26,11 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/register/business")
+    public ResponseEntity<AuthResponse> registerBusiness(@Valid @RequestBody BusinessRegisterRequest request) {
+        return ResponseEntity.ok(authService.registerBusiness(request));
     }
 
     @PostMapping("/login")

@@ -1,6 +1,6 @@
 # Banking System
 
-`Banking System` - bu Spring Boot asosida yozilgan REST API loyihasi bo'lib, bankning asosiy jarayonlarini boshqaradi: autentifikatsiya, hisoblar, kartalar, tranzaksiyalar, kredit arizalari va kredit to'lovlari.
+`Banking System` - bu Spring Boot asosida yozilgan REST API loyihasi bo'lib, bankning asosiy jarayonlarini boshqaradi: autentifikatsiya, hisoblar, kartalar, tranzaksiyalar, kredit arizalari, kredit to'lovlari va endi biznes/kompaniya banking oqimlari.
 
 Loyiha to'liq backend formatda ishlaydi va Swagger UI orqali test qilish mumkin.
 
@@ -14,6 +14,7 @@ Loyiha to'liq backend formatda ishlaydi va Swagger UI orqali test qilish mumkin.
 - [Swagger va hujjatlar](#swagger-va-hujjatlar)
 - [Autentifikatsiya va xavfsizlik](#autentifikatsiya-va-xavfsizlik)
 - [API endpointlar](#api-endpointlar)
+- [Biznes va kompaniya oqimi](#biznes-va-kompaniya-oqimi)
 - [Transaction History filtrlari](#transaction-history-filtrlari)
 - [Cron (scheduler) jarayonlari](#cron-scheduler-jarayonlari)
 - [Domain modellar va enumlar](#domain-modellar-va-enumlar)
@@ -22,11 +23,16 @@ Loyiha to'liq backend formatda ishlaydi va Swagger UI orqali test qilish mumkin.
 ## Asosiy imkoniyatlar
 
 - JWT (`access` + `refresh`) asosida login tizimi
+- Jismoniy shaxs va biznes foydalanuvchilar uchun alohida registration oqimi
+- Kompaniya yaratish, ko'rish va a'zolarini boshqarish
 - Foydalanuvchilar uchun bank hisoblarini yaratish va boshqarish
+- Kompaniyaga tegishli bank hisoblarini yaratish va ko'rish
 - Kartalar chiqarish, bloklash, blokdan chiqarish
 - Karta va hisoblar o'rtasida to'lov/o'tkazmalar
+- Kompaniya a'zolari uchun kompaniya hisoblari bo'yicha tranzaksiyalar va tarixga kirish
 - Tranzaksiya tarixini filterlash (sana, summa, tur)
 - Kredit kalkulyatsiyasi, kredit arizasi, tasdiqlash/rad etish
+- Kompaniya hisobidan biznes kredit arizasi yuborish va kompaniya kesimida kreditlarni ko'rish
 - Kredit to'lov grafigi va to'lovlarni qabul qilish
 - Overdue kreditlar va muddati o'tgan kartalarni avtomatik qayta ishlash
 
@@ -135,13 +141,32 @@ Ruxsat etilgan origin:
 ### Auth (`/api/auth`)
 
 - `POST /register`
+- `POST /register/business`
 - `POST /login`
 - `POST /refresh`
+
+`AuthResponse` endi quyidagi qo'shimcha maydonlarni qaytaradi:
+
+- `userId`
+- `role`
+- `userType`
+- `companyId`
+
+### Company (`/api/companies`)
+
+- `POST /` - admin
+- `GET /` - admin
+- `GET /{companyId}`
+- `PUT /{companyId}` - admin
+- `GET /{companyId}/members`
+- `POST /{companyId}/members` - admin
 
 ### Account (`/api/accounts`)
 
 - `POST /user/{userId}` - admin
+- `POST /company/{companyId}` - admin
 - `GET /user/{userId}`
+- `GET /company/{companyId}`
 - `GET /{accountId}`
 - `PUT /{accountId}` - admin
 - `PATCH /{accountId}/freeze` - admin
@@ -168,6 +193,7 @@ Ruxsat etilgan origin:
 
 - `POST /`
 - `GET /user/{userId}`
+- `GET /company/{companyId}`
 - `GET /pending` - admin
 - `POST /{id}/approve` - admin
 - `POST /{id}/reject` - admin
@@ -176,9 +202,62 @@ Ruxsat etilgan origin:
 
 - `POST /calculate`
 - `GET /user/{userId}`
+- `GET /company/{companyId}`
 - `GET /{loanId}`
 - `GET /{loanId}/schedule`
 - `POST /{loanId}/pay`
+
+## Biznes va kompaniya oqimi
+
+Loyihaga kompaniya banking oqimi qo'shildi. Endi tizim faqat individual foydalanuvchilar bilan cheklanmaydi.
+
+### Asosiy qoidalar
+
+- `POST /api/auth/register/business` yangi kompaniya va unga bog'langan `BUSINESS` foydalanuvchini yaratadi
+- `Company` entity endi real ishlatiladi va foydalanuvchilar `company_id` orqali kompaniyaga biriktiriladi
+- `Account.ownerType` qiymati `USER` yoki `COMPANY` bo'lishi mumkin
+- `ADMIN` kompaniya va kompaniya hisoblarini yaratadi/boshqaradi
+- kompaniya a'zolari o'z kompaniyasiga tegishli ma'lumotlarni ko'rishi va kompaniya hisoblari bilan ishlashi mumkin
+- kompaniya a'zolari kompaniya hisobidan kredit arizasi yuborishi va kompaniya kreditlarini ko'rishi mumkin
+
+### Biznes registration misoli
+
+`POST /api/auth/register/business`
+
+```json
+{
+  "fullName": "Ali Valiyev",
+  "phone": "+998901234567",
+  "password": "secret123",
+  "passport": "AA1234567",
+  "pinfl": "12345678901234",
+  "companyName": "Acme Trade",
+  "companyInn": "123456789",
+  "director": "Ali Valiyev"
+}
+```
+
+### Kompaniya kredit arizasi misoli
+
+`POST /api/loan-applications`
+
+```json
+{
+  "userId": 7,
+  "companyId": 3,
+  "accountId": 12,
+  "amount": 10000000,
+  "durationMonth": 12,
+  "loanType": "BUSINESS",
+  "monthlyIncome": 5000000
+}
+```
+
+Bu holda:
+
+- `userId` - arizani yuborayotgan biznes foydalanuvchi
+- `companyId` - foydalanuvchi biriktirilgan kompaniya
+- `accountId` - aynan shu kompaniyaga tegishli hisob
 
 ## Transaction History filtrlari
 
@@ -213,13 +292,13 @@ Loyihada `@EnableScheduling` yoqilgan va quyidagi avtomatik jarayonlar mavjud:
 ### Asosiy entity'lar
 
 - `User`
+- `Company`
 - `Account`
 - `Card`
 - `Transaction`
 - `LoanApplication`
 - `Loan`
 - `LoanPayment`
-- `Company`
 - `Partner`
 
 ### Enum qiymatlari
@@ -251,6 +330,7 @@ Mavjud test sinflari:
 
 - `BankingSystemApplicationTests` (context load testi)
 - `ServiceSecurityAndValidationTests` (servis darajasidagi security/validation holatlari)
+- `BusinessFeatureIntegrationTests` (biznes registration, kompaniya hisob access va kompaniya kredit oqimi)
 
 ## Tezkor foydalanish bo'yicha eslatma
 
@@ -261,3 +341,14 @@ Swagger orqali test ketma-ketligi:
 3. `accessToken` ni oling
 4. Swagger'da `Authorize` ga `Bearer <access_token>` kiriting
 5. Himoyalangan endpointlarni test qiling
+
+Biznes oqimi uchun tavsiya etilgan test ketma-ketligi:
+
+1. `POST /api/auth/register/business`
+2. `POST /api/auth/login`
+3. admin orqali `POST /api/accounts/company/{companyId}`
+4. `GET /api/companies/{companyId}`
+5. `GET /api/accounts/company/{companyId}`
+6. `POST /api/loan-applications` (`companyId` bilan)
+7. `GET /api/loan-applications/company/{companyId}`
+8. `GET /api/loans/company/{companyId}`

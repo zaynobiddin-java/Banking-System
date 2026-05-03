@@ -31,6 +31,11 @@ public class LoanApplicationController {
         return ResponseEntity.ok(applicationService.getByUser(userId));
     }
 
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<List<LoanApplicationResponse>> getByCompany(@PathVariable Long companyId) {
+        return ResponseEntity.ok(applicationService.getByCompany(companyId));
+    }
+
     @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<LoanApplicationResponse>> getPending() {

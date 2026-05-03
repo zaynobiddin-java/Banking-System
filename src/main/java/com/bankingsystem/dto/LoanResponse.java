@@ -11,6 +11,7 @@ import java.time.LocalDate;
 public class LoanResponse {
     private Long id;
     private Long userId;
+    private Long companyId;
     private Long accountId;
     private String loanType;
     private BigDecimal amount;

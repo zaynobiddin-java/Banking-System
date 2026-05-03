@@ -45,6 +45,7 @@ public class LoanDisbursementService {
 
         Loan loan = Loan.builder()
                 .user(application.getUser())
+                .company(application.getCompany())
                 .account(application.getDisbursementAccount())
                 .loanType(application.getLoanType())
                 .amount(application.getAmount())

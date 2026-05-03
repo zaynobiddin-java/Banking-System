@@ -11,6 +11,7 @@ import com.bankingsystem.entity.OwnerType;
 import com.bankingsystem.exception.BadRequestException;
 import com.bankingsystem.exception.NotFoundException;
 import com.bankingsystem.repository.AccountRepository;
+import com.bankingsystem.repository.CompanyRepository;
 import com.bankingsystem.repository.UserRepository;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
     private final AccessControlService accessControlService;
 
     public AccountResponse createAccount(Long userId, AccountCreateRequest request) {
@@ -49,6 +51,26 @@ public class AccountService {
         return toResponse(account);
     }
 
+    public AccountResponse createCompanyAccount(Long companyId, AccountCreateRequest request) {
+        accessControlService.requireAdmin();
+
+        if (!companyRepository.existsById(companyId)) {
+            throw new NotFoundException("Kompaniya topilmadi");
+        }
+
+        Account account = Account.builder()
+                .accountNumber(generateAccountNumber())
+                .balance(BigDecimal.ZERO)
+                .currency(normalizeCurrency(request.getCurrency()))
+                .status(AccountStatus.ACTIVE)
+                .ownerType(OwnerType.COMPANY)
+                .ownerId(companyId)
+                .build();
+
+        accountRepository.save(account);
+        return toResponse(account);
+    }
+
     public List<AccountResponse> getAccountsByUserId(Long userId) {
         accessControlService.requireUserAccess(userId);
 
@@ -57,6 +79,19 @@ public class AccountService {
         }
 
         return accountRepository.findByOwnerIdAndOwnerType(userId, OwnerType.USER)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public List<AccountResponse> getAccountsByCompanyId(Long companyId) {
+        accessControlService.requireCompanyAccess(companyId);
+
+        if (!companyRepository.existsById(companyId)) {
+            throw new NotFoundException("Kompaniya topilmadi");
+        }
+
+        return accountRepository.findByOwnerIdAndOwnerType(companyId, OwnerType.COMPANY)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -139,6 +174,7 @@ public class AccountService {
                 .balance(account.getBalance())
                 .currency(account.getCurrency())
                 .status(account.getStatus().name())
+                .ownerType(account.getOwnerType().name())
                 .ownerId(account.getOwnerId())
                 .build();
     }

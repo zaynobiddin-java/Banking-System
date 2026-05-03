@@ -13,6 +13,7 @@ public class AccountResponse {
     private BigDecimal balance;
     private String currency;
     private String status;
+    private String ownerType;
     private Long ownerId;
 }
 

@@ -10,6 +10,8 @@ public interface LoanApplicationRepository extends JpaRepository<LoanApplication
 
     List<LoanApplication> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    List<LoanApplication> findByCompanyIdOrderByCreatedAtDesc(Long companyId);
+
     List<LoanApplication> findByStatusOrderByCreatedAtDesc(LoanApplicationStatus status);
 }
 
